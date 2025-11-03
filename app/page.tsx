@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { GraduationCap, ShieldCheck, Briefcase, ExternalLink, Stethoscope, BookOpen, CheckCircle2, CheckCircle, Download } from "lucide-react";
+import { GraduationCap, ShieldCheck, Briefcase, ExternalLink, Stethoscope, BookOpen, CheckCircle2, CheckCircle, Circle } from "lucide-react";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -127,78 +127,63 @@ const ROADMAP: Item[] = [
 
 export default function Page() { return <RoadmapVisual />; }
 
-function useRoadmapProgress(items: Item[]) {
-  const [doneTasks, setDoneTasks] = useState<Set<string>>(new Set());
+function useSectionProgress(items: Item[]) {
+  const [doneSections, setDoneSections] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const s = new Set<string>();
     if (typeof window !== 'undefined') {
-      items.forEach((it) => it.tracker?.forEach((t, ti) => t.tasks.forEach((_, xi) => {
-        const k = `nis:task:${it.id}:${ti}:${xi}`;
+      items.forEach((it) => it.tracker?.forEach((t, ti) => {
+        const k = `nis:section:${it.id}:${ti}`;
         if (localStorage.getItem(k) === '1') s.add(k);
-      })));
-
+      }));
     }
-    setDoneTasks(s);
+    setDoneSections(s);
   }, [items]);
-  const toggleTask = (id: string, ti: number, xi: number) => {
-    const k = `nis:task:${id}:${ti}:${xi}`;
-    setDoneTasks((prev) => {
+
+  const toggleSection = (id: string, ti: number) => {
+    const k = `nis:section:${id}:${ti}`;
+    setDoneSections((prev) => {
       const next = new Set(prev);
       if (next.has(k)) { next.delete(k); if (typeof window !== 'undefined') localStorage.setItem(k, '0'); }
       else { next.add(k); if (typeof window !== 'undefined') localStorage.setItem(k, '1'); }
       return next;
     });
   };
-  let total = 0; items.forEach((it) => it.tracker?.forEach((t) => total += t.tasks.length));
-  const done = doneTasks.size; const pct = total > 0 ? Math.round((done/total)*100) : 0;
-  return { doneTasks, toggleTask, total, done, pct };
+
+  // Overall progress by tasks contained in done sections
+  let totalTasks = 0, completedTasks = 0;
+  items.forEach((it) => it.tracker?.forEach((t, ti) => {
+    totalTasks += t.tasks.length;
+    const k = `nis:section:${it.id}:${ti}`;
+    if (doneSections.has(k)) completedTasks += t.tasks.length;
+  }));
+  const pct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  return { doneSections, toggleSection, totalTasks, completedTasks, pct };
 }
 
 function RoadmapVisual() {
-  const { doneTasks, toggleTask, total, done, pct } = useRoadmapProgress(ROADMAP);
-  const mainRef = useRef<HTMLDivElement | null>(null);
-  const [scrollPct, setScrollPct] = useState(0);
-
-  useEffect(() => {
-    const handler = () => {
-      const el = mainRef.current; if (!el) return;
-      const rect = el.getBoundingClientRect(); const vh = window.innerHeight || 1;
-      const totalH = rect.height - vh; let sc = 0;
-      if (rect.top >= 0) sc = 0; else if (rect.bottom <= vh) sc = 1; else sc = Math.min(1, Math.max(0, (-rect.top)/(totalH||1)));
-      setScrollPct(Math.round(sc*100));
-    };
-    handler(); window.addEventListener('scroll', handler, { passive: true }); window.addEventListener('resize', handler);
-    return () => { window.removeEventListener('scroll', handler); window.removeEventListener('resize', handler); };
-  }, []);
+  const { doneSections, toggleSection, totalTasks, completedTasks, pct } = useSectionProgress(ROADMAP);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-5xl mx-auto grid grid-cols-12 gap-6">
-        <aside className="hidden md:block col-span-3">
-          <div className="sticky top-6 space-y-4">
-            <div>
-              <div className="text-sm font-medium text-gray-700">Overall progress</div>
-              <div className="text-2xl font-bold">{pct}%</div>
-              <div className="text-xs text-gray-600">{done} of {total} tasks completed</div>
-            </div>
-            <div className="relative h-64 w-3 bg-gray-200 rounded-full overflow-hidden">
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-blue-600 to-cyan-500 transition-all duration-300" style={{ height: `${pct}%` }} />
-              <div className="absolute bottom-0 left-0 right-0 bg-black/20 transition-all duration-200 pointer-events-none" style={{ height: `${scrollPct}%` }} aria-hidden />
-            </div>
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
+        <p className="text-gray-600 mb-4">Roadmap emphasizes DPIII’s current student status. CNA exposure → ADN→RN → BSN (preferred) → informatics coursework → ANCC RN‑BC → NI Specialist.</p>
+
+        {/* Top summary bar only */}
+        <div className="card mb-6 p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-gray-700">Overall progress</div>
+            <div className="text-sm text-gray-600">{completedTasks} of {totalTasks} tasks completed</div>
           </div>
-        </aside>
-        <main ref={mainRef} className="col-span-12 md:col-span-9">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
-          <p className="text-gray-600 mb-4">Roadmap emphasizes DPIII’s current student status. CNA exposure → ADN→RN → BSN (preferred) → informatics coursework → ANCC RN‑BC → NI Specialist.</p>
-          <div className="card mb-6 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-700">Overall progress</div>
-              <div className="text-sm text-gray-600">{done} of {total} tasks completed</div>
-            </div>
-            <div className="mt-2 h-3 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300" style={{ width: `${pct}%` }} />
-            </div>
+          <div className="mt-2 h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
+        </div>
+
+        <main>
           <div className="max-w-[760px] mx-auto space-y-5">
             {ROADMAP.map((r) => {
               const Icon = (r.icon || CheckCircle2) as IconType;
@@ -221,41 +206,47 @@ function RoadmapVisual() {
                             </div>
                           </div>
                         </div>
+
                         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                           {r.milestone ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Milestone: {r.milestone}</span> : null}
                           {r.salaryRange ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Salary: {r.salaryRange}</span> : null}
                         </div>
+
                         {r.tracker?.length ? (
                           <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                            {r.tracker.map((t, ti) => (
-                              <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                                <div className="font-medium">{t.label} — {t.focus}</div>
-                                <ul className="mt-2 space-y-1">
-                                  {t.tasks.map((x, xi) => {
-                                    const k = `nis:task:${r.id}:${ti}:${xi}`;
-                                    const isDone = doneTasks.has(k);
-                                    return (
-                                      <li key={x} className="flex items-center justify-between gap-2">
+                            {r.tracker.map((t, ti) => {
+                              const sectionKey = `nis:section:${r.id}:${ti}`;
+                              const sectionDone = doneSections.has(sectionKey);
+                              return (
+                                <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="font-medium">{t.label} — {t.focus}</div>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleSection(r.id, ti)}
+                                      aria-pressed={sectionDone}
+                                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border focus:outline-none focus:ring-2 focus:ring-blue-200 ${sectionDone ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                                      title={sectionDone ? "Mark section as to do" : "Mark section as done"}
+                                    >
+                                      {sectionDone ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                                      {sectionDone ? "Done" : "To do"}
+                                    </button>
+                                  </div>
+                                  <ul className="mt-2 space-y-1">
+                                    {t.tasks.map((x) => (
+                                      <li key={x} className="flex items-center gap-2">
+                                        {sectionDone ? <CheckCircle className="h-3.5 w-3.5 text-green-600" /> : <Circle className="h-3.5 w-3.5 text-gray-400" />}
                                         <span>{x}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleTask(r.id, ti, xi)}
-                                          aria-pressed={isDone}
-                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border focus:outline-none focus:ring-2 focus:ring-blue-200 ${isDone ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-                                          title={isDone ? "Mark as to do" : "Mark as done"}
-                                        >
-                                          {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 inline-block">•</span>}
-                                          {isDone ? "Done" : "To do"}
-                                        </button>
                                       </li>
-                                    );
-                                  })}
-                                </ul>
-                                <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
-                              </li>
-                            ))}
+                                    ))}
+                                  </ul>
+                                  <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : null}
+
                         {(r.links?.length) ? (
                           <div className="mt-4 flex flex-wrap gap-2">
                             {r.links?.map((l) => (

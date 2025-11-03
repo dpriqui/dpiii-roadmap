@@ -1,18 +1,8 @@
-# DPIII NIS Roadmap — Icon fix
+# DPIII NIS Roadmap — Section Toggle + Clean UI
 
-Fixed the TypeScript error:
-```
-Type error: This expression is not callable. Not all constituents of type 'IconType' are callable.
-```
-by **rendering icons with JSX** instead of calling them as functions:
+- Removed the **left sidebar** progress bar.
+- One **section-level** "To do / Done" pill per section.
+- Each task shows a **check icon** when the section is completed.
+- Top summary bar remains.
 
-```tsx
-const Icon = (r.icon || CheckCircle2) as IconType;
-<Icon className="h-5 w-5" />
-```
-
-Then:
-```bash
-npm install
-npm run build
-```
+Deploy via GitHub → Vercel.
