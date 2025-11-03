@@ -1,13 +1,18 @@
-# DPIII NIS Roadmap — Clean header fix
+# DPIII NIS Roadmap — Icon fix
 
-Fixed the build error `Expected unicode escape` by ensuring `app/page.tsx` starts with **exactly**:
+Fixed the TypeScript error:
 ```
-'use client';
+Type error: This expression is not callable. Not all constituents of type 'IconType' are callable.
 ```
-(no BOM or stray characters). Also standardized LF line endings.
+by **rendering icons with JSX** instead of calling them as functions:
 
-Quick start:
+```tsx
+const Icon = (r.icon || CheckCircle2) as IconType;
+<Icon className="h-5 w-5" />
+```
+
+Then:
 ```bash
 npm install
-npm run dev
+npm run build
 ```

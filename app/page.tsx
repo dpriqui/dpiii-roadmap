@@ -136,6 +136,7 @@ function useRoadmapProgress(items: Item[]) {
         const k = `nis:task:${it.id}:${ti}:${xi}`;
         if (localStorage.getItem(k) === '1') s.add(k);
       })));
+
     }
     setDoneTasks(s);
   }, [items]);
@@ -157,6 +158,7 @@ function RoadmapVisual() {
   const { doneTasks, toggleTask, total, done, pct } = useRoadmapProgress(ROADMAP);
   const mainRef = useRef<HTMLDivElement | null>(null);
   const [scrollPct, setScrollPct] = useState(0);
+
   useEffect(() => {
     const handler = () => {
       const el = mainRef.current; if (!el) return;
@@ -198,70 +200,77 @@ function RoadmapVisual() {
             </div>
           </div>
           <div className="max-w-[760px] mx-auto space-y-5">
-            {ROADMAP.map((r) => (
-              <section id={r.id} key={r.id}>
-                <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="relative">
-                  <Card className="overflow-hidden">
-                    <div className={`h-1 w-full bg-gradient-to-r ${r.color}`} />
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 grid place-items-center rounded-xl bg-gray-100 text-gray-800">
-                            {(r.icon || CheckCircle2)({ className: 'h-5 w-5' } as any)}
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-500">{r.year}</div>
-                            <h3 className="text-base font-semibold text-gray-900">{r.focus}</h3>
-                            {r.context ? <p className="text-sm text-gray-600 mt-0.5">{r.context}</p> : null}
-                            {r.certs?.length ? <p className="text-sm text-gray-600 mt-0.5">{r.certs.join(" • ")}</p> : null}
+            {ROADMAP.map((r) => {
+              const Icon = (r.icon || CheckCircle2) as IconType;
+              return (
+                <section id={r.id} key={r.id}>
+                  <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="relative">
+                    <Card className="overflow-hidden">
+                      <div className={`h-1 w-full bg-gradient-to-r ${r.color}`} />
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 grid place-items-center rounded-xl bg-gray-100 text-gray-800">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-gray-500">{r.year}</div>
+                              <h3 className="text-base font-semibold text-gray-900">{r.focus}</h3>
+                              {r.context ? <p className="text-sm text-gray-600 mt-0.5">{r.context}</p> : null}
+                              {r.certs?.length ? <p className="text-sm text-gray-600 mt-0.5">{r.certs.join(" • ")}</p> : null}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                        {r.milestone ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Milestone: {r.milestone}</span> : null}
-                        {r.salaryRange ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Salary: {r.salaryRange}</span> : null}
-                      </div>
-                      {r.tracker?.length ? (
-                        <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                          {r.tracker.map((t, ti) => (
-                            <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                              <div className="font-medium">{t.label} — {t.focus}</div>
-                              <ul className="mt-2 space-y-1">
-                                {t.tasks.map((x, xi) => {
-                                  const k = `nis:task:${r.id}:${ti}:${xi}`;
-                                  const isDone = doneTasks.has(k);
-                                  return (
-                                    <li key={x} className="flex items-center justify-between gap-2">
-                                      <span>{x}</span>
-                                      <button type="button" onClick={() => toggleTask(r.id, ti, xi)} aria-pressed={isDone}
-                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border focus:outline-none focus:ring-2 focus:ring-blue-200 ${isDone ? 'bg-green-100 border-green-300 text-green-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                                        title={isDone ? 'Mark as to do' : 'Mark as done'}>
-                                        {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 inline-block">•</span>}
-                                        {isDone ? 'Done' : 'To do'}
-                                      </button>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                              <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {(r.links?.length) ? (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {r.links?.map((l) => (
-                            <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-blue-700 bg-blue-50 border-blue-200 hover:underline">
-                              <ExternalLink className="h-3.5 w-3.5" /> {l.label}
-                            </a>
-                          ))}
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                          {r.milestone ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Milestone: {r.milestone}</span> : null}
+                          {r.salaryRange ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Salary: {r.salaryRange}</span> : null}
                         </div>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </section>
-            ))}
+                        {r.tracker?.length ? (
+                          <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                            {r.tracker.map((t, ti) => (
+                              <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                <div className="font-medium">{t.label} — {t.focus}</div>
+                                <ul className="mt-2 space-y-1">
+                                  {t.tasks.map((x, xi) => {
+                                    const k = `nis:task:${r.id}:${ti}:${xi}`;
+                                    const isDone = doneTasks.has(k);
+                                    return (
+                                      <li key={x} className="flex items-center justify-between gap-2">
+                                        <span>{x}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleTask(r.id, ti, xi)}
+                                          aria-pressed={isDone}
+                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border focus:outline-none focus:ring-2 focus:ring-blue-200 ${isDone ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                                          title={isDone ? "Mark as to do" : "Mark as done"}
+                                        >
+                                          {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 inline-block">•</span>}
+                                          {isDone ? "Done" : "To do"}
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                                <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {(r.links?.length) ? (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {r.links?.map((l) => (
+                              <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-blue-700 bg-blue-50 border-blue-200 hover:underline">
+                                <ExternalLink className="h-3.5 w-3.5" /> {l.label}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </section>
+              );
+            })}
           </div>
         </main>
       </div>
