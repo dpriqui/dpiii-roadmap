@@ -1,9 +1,10 @@
-# DPIII NIS Roadmap — Fixes
+# DPIII NIS Roadmap — Clean header fix
 
-What I fixed:
-- **“To do” pills**: consistent rounded‑full buttons with text + icon, aligned right of each task.
-- **Scroll listener**: `passive: true` (was `True`) — prevents a TS runtime error.
-- **.card utility**: added to `globals.css` (used by the top summary).
+Fixed the build error `Expected unicode escape` by ensuring `app/page.tsx` starts with **exactly**:
+```
+'use client';
+```
+(no BOM or stray characters). Also standardized LF line endings.
 
 Quick start:
 ```bash
