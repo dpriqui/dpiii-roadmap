@@ -1,10 +1,9 @@
-# DPIII — Nursing Informatics Specialist (NIS) Roadmap
+# David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)
 
-Patches included:
-- `next-env.d.ts` for stable TS setup
-- A11y: `aria-expanded` + `type="button"` on toggles
-- Strict icon typing
-- Tailwind safelist for gradient utilities
+**New:** Progress bar now reflects **stage completion + each subtask** within the trackers.
+- Stage toggle (Done/To do) on every card.
+- Per-subtask check buttons inside Details.
+- All progress persists via `localStorage`.
 
 ## Quick start
 ```bash

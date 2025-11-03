@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DPIII — Nursing Informatics Specialist (NIS) Roadmap",
+  title: "David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)",
   description: "CNA (exposure) → ADN→RN (required) → BSN (preferred) → Informatics coursework → ANCC RN‑BC → NI Specialist (MA market).",
   openGraph: {
-    title: "DPIII — NIS Roadmap",
+    title: "David E. Perez III — NIS Roadmap (2025–2030)",
     description: "MA-focused path to Nursing Informatics Specialist.",
     type: "website",
     url: "https://example.com"
   },
   twitter: {
     card: "summary_large_image",
-    title: "DPIII — NIS Roadmap",
+    title: "David E. Perez III — NIS Roadmap",
     description: "From CNA exposure to RN, BSN, informatics coursework, then ANCC RN-BC → NI Specialist (MA)."
   }
 };

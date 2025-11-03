@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, ShieldCheck, Briefcase, ChevronDown, ExternalLink, Stethoscope, BookOpen, CheckCircle2 } from "lucide-react";
+import { GraduationCap, ShieldCheck, Briefcase, ChevronDown, ExternalLink, Stethoscope, BookOpen, CheckCircle2, CheckCircle } from "lucide-react";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 type Item = {
+  id: string;
   year: string;
   focus: string;
   certs?: string[];
@@ -23,6 +24,7 @@ type Item = {
 
 const ROADMAP: Item[] = [
   {
+    id: "2025-q4",
     year: "2025 (Q4)",
     focus: "Clinical Entry & IT Foundations — CNA/LNA + CompTIA A+/Net+/Sec+",
     certs: ["CNA/LNA", "CompTIA A+", "CompTIA Network+", "CompTIA Security+"],
@@ -45,6 +47,7 @@ const ROADMAP: Item[] = [
     ]
   },
   {
+    id: "2026",
     year: "2026 (Q1–Q4)",
     focus: "ADN Program → RN Licensure (required for informatics roles)",
     certs: ["ADN + NCLEX‑RN"],
@@ -64,6 +67,7 @@ const ROADMAP: Item[] = [
     ]
   },
   {
+    id: "2027",
     year: "2027",
     focus: "BSN Completion (preferred) + Informatics Coursework/Certificate",
     certs: ["BSN", "Informatics certificate (or MSN‑NI start)"],
@@ -81,6 +85,7 @@ const ROADMAP: Item[] = [
     ]
   },
   {
+    id: "2028",
     year: "2028",
     focus: "Board & Industry Validators — ANCC RN‑BC + (Optional) HIMSS CPHIMS",
     certs: ["ANCC Informatics Nurse (RN‑BC)", "HIMSS CPHIMS (optional)"],
@@ -99,6 +104,7 @@ const ROADMAP: Item[] = [
     ]
   },
   {
+    id: "2029-2030",
     year: "2029–2030",
     focus: "Target Role — Nursing Informatics Specialist (MA market)",
     certs: ["RN (active)", "BSN (preferred)", "RN‑BC (recommended)"],
@@ -118,21 +124,130 @@ export default function Page() {
   return <RoadmapVisual />;
 }
 
+function useRoadmapProgress(items: Item[]) {
+  const [doneStage, setDoneStage] = useState<Set<string>>(new Set());
+  const [doneTasks, setDoneTasks] = useState<Set<string>>(new Set());
+
+  // Build a flat list of all completion keys (stages + tasks)
+  const allKeys: string[] = useMemo(() => {
+    const keys: string[] = [];
+    items.forEach((it) => {
+      // stage key
+      keys.push(`nis:stage:${it.id}`);
+      // task keys
+      it.tracker?.forEach((t, ti) => {
+        t.tasks.forEach((_, xi) => {
+          keys.push(`nis:task:${it.id}:${ti}:${xi}`);
+        });
+      });
+    });
+    return keys;
+  }, [items]);
+
+  useEffect(() => {
+    const sStages = new Set<string>();
+    const sTasks = new Set<string>();
+    if (typeof window !== "undefined") {
+      items.forEach((it) => {
+        const st = localStorage.getItem(`nis:stage:${it.id}`);
+        if (st === "1") sStages.add(it.id);
+        it.tracker?.forEach((t, ti) => {
+          t.tasks.forEach((_, xi) => {
+            const key = `nis:task:${it.id}:${ti}:${xi}`;
+            const v = localStorage.getItem(key);
+            if (v === "1") sTasks.add(key);
+          });
+        });
+      });
+    }
+    setDoneStage(sStages);
+    setDoneTasks(sTasks);
+  }, [items]);
+
+  const toggleStage = (id: string) => {
+    setDoneStage((prev) => {
+      const next = new Set(prev);
+      const key = `nis:stage:${id}`;
+      if (next.has(id)) {
+        next.delete(id);
+        if (typeof window !== "undefined") localStorage.setItem(key, "0");
+      } else {
+        next.add(id);
+        if (typeof window !== "undefined") localStorage.setItem(key, "1");
+      }
+      return next;
+    });
+  };
+
+  const toggleTask = (id: string, ti: number, xi: number) => {
+    const key = `nis:task:${id}:${ti}:${xi}`;
+    setDoneTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+        if (typeof window !== "undefined") localStorage.setItem(key, "0");
+      } else {
+        next.add(key);
+        if (typeof window !== "undefined") localStorage.setItem(key, "1");
+      }
+      return next;
+    });
+  };
+
+  // Compute totals
+  const totalStages = items.length;
+  let totalTasks = 0;
+  items.forEach((it) => { it.tracker?.forEach((t) => totalTasks += t.tasks.length); });
+
+  const completedStages = doneStage.size;
+  const completedTasks = doneTasks.size;
+
+  const completedTotal = completedStages + completedTasks;
+  const grandTotal = totalStages + totalTasks;
+  const pct = grandTotal > 0 ? Math.round((completedTotal / grandTotal) * 100) : 0;
+
+  return {
+    doneStage, doneTasks, toggleStage, toggleTask,
+    completedStages, completedTasks, totalStages, totalTasks, pct
+  };
+}
+
 function RoadmapVisual() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+  const {
+    doneStage, doneTasks, toggleStage, toggleTask,
+    completedStages, completedTasks, totalStages, totalTasks, pct
+  } = useRoadmapProgress(ROADMAP);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">DPIII — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
       <p className="text-center text-gray-600 mb-6">CNA (exposure) → ADN→RN (required) → BSN (preferred) → Informatics coursework → ANCC RN‑BC → NI Specialist (MA market).</p>
 
-      <div className="grid md:grid-cols-2 gap-5 max-w-6xl mx-auto">
+      {/* Progress Bar (stages + subtasks) */}
+      <div className="max-w-3xl mx-auto mb-6">
+        <div className="flex items-center justify-between text-sm mb-1">
+          <span className="font-medium text-gray-700">Overall progress (stages + subtasks)</span>
+          <span className="text-gray-600">{completedStages + completedTasks}/{totalStages + totalTasks} ({pct}%)</span>
+        </div>
+        <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-1 text-xs text-gray-500">{completedStages}/{totalStages} stages • {completedTasks}/{totalTasks} subtasks</div>
+      </div>
+
+      {/* Single-column layout */}
+      <div className="max-w-3xl mx-auto space-y-5">
         {ROADMAP.map((r, idx) => {
           const Icon = r.icon || CheckCircle2;
           const isOpen = openIdx === idx;
+          const stageDone = doneStage.has(r.id);
           return (
             <motion.div
-              key={r.year}
+              key={r.id}
               layout
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -153,15 +268,32 @@ function RoadmapVisual() {
                         {r.certs?.length ? <p className="text-sm text-gray-600 mt-0.5">{r.certs.join(" • ")}</p> : null}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      aria-expanded={isOpen}
-                      onClick={() => setOpenIdx((v) => (v === idx ? null : idx))}
-                      className="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 focus:outline-none focus:ring focus:ring-blue-200 rounded"
-                    >
-                      <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                      {isOpen ? "Hide" : "Details"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleStage(r.id)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+                          stageDone
+                            ? "bg-green-100 border-green-300 text-green-700"
+                            : "bg-gray-50 border-gray-200 text-gray-700"
+                        }`}
+                        aria-pressed={stageDone}
+                        title={stageDone ? "Mark as to do" : "Mark as done"}
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        {stageDone ? "Done" : "To do"}
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        onClick={() => setOpenIdx((v) => (v === idx ? null : idx))}
+                        className="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 focus:outline-none focus:ring focus:ring-blue-200 rounded"
+                      >
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        {isOpen ? "Hide" : "Details"}
+                      </button>
+                    </div>
                   </div>
 
                   <AnimatePresence initial={false}>
@@ -179,13 +311,32 @@ function RoadmapVisual() {
 
                         {r.tracker?.length ? (
                           <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                            {r.tracker.map((t) => (
+                            {r.tracker.map((t, ti) => (
                               <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                                 <div className="font-medium">{t.label} — {t.focus}</div>
-                                <ul className="list-disc pl-5">
-                                  {t.tasks.map((x) => <li key={x}>{x}</li>)}
+                                <ul className="mt-1 space-y-1">
+                                  {t.tasks.map((x, xi) => {
+                                    const taskKey = `nis:task:${r.id}:${ti}:${xi}`;
+                                    const isTaskDone = doneTasks.has(taskKey);
+                                    return (
+                                      <li key={x} className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleTask(r.id, ti, xi)}
+                                          aria-pressed={isTaskDone}
+                                          className={`inline-flex items-center justify-center h-5 w-5 rounded border text-[10px] ${
+                                            isTaskDone ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-gray-300 text-gray-500"
+                                          }`}
+                                          title={isTaskDone ? "Mark as to do" : "Mark as done"}
+                                        >
+                                          ✓
+                                        </button>
+                                        <span>{x}</span>
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
-                                <div className="text-gray-600 mt-1"><span className="font-medium">Outcome:</span> {t.outcome}</div>
+                                <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
                               </li>
                             ))}
                           </ul>
@@ -216,7 +367,7 @@ function RoadmapVisual() {
       </div>
 
       <footer className="mt-8 text-center text-xs text-gray-500">
-        Built with Next.js + Tailwind + Framer Motion. Roadmap data lives in <code>app/page.tsx</code>.
+        Built with Next.js + Tailwind + Framer Motion. Progress (stages + subtasks) is stored locally in your browser.
       </footer>
     </div>
   );
