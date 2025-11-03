@@ -1,9 +1,10 @@
+\
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { GraduationCap, ShieldCheck, Briefcase, ExternalLink, Stethoscope, BookOpen, CheckCircle2, CheckCircle } from "lucide-react";
+import { GraduationCap, ShieldCheck, Briefcase, ExternalLink, Stethoscope, BookOpen, CheckCircle2, CheckCircle, Download } from "lucide-react";
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
@@ -21,7 +22,7 @@ type Item = {
   tracker?: { label: string; focus: string; tasks: string[]; outcome: string }[];
 };
 
-// Stages reflect DPIII is still in school
+// School-first stages
 const ROADMAP: Item[] = [
   {
     id: "2025-hs-senior",
@@ -141,16 +142,12 @@ export default function Page() {
 }
 
 function useRoadmapProgress(items: Item[]) {
-  const [doneStage, setDoneStage] = useState<Set<string>>(new Set());
   const [doneTasks, setDoneTasks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const sStages = new Set<string>();
     const sTasks = new Set<string>();
     if (typeof window !== "undefined") {
       items.forEach((it) => {
-        const st = localStorage.getItem(`nis:stage:${it.id}`);
-        if (st === "1") sStages.add(it.id);
         it.tracker?.forEach((t, ti) => {
           t.tasks.forEach((_, xi) => {
             const key = `nis:task:${it.id}:${ti}:${xi}`;
@@ -160,24 +157,8 @@ function useRoadmapProgress(items: Item[]) {
         });
       });
     }
-    setDoneStage(sStages);
     setDoneTasks(sTasks);
   }, [items]);
-
-  const toggleStage = (id: string) => {
-    setDoneStage((prev) => {
-      const next = new Set(prev);
-      const key = `nis:stage:${id}`;
-      if (next.has(id)) {
-        next.delete(id);
-        if (typeof window !== "undefined") localStorage.setItem(key, "0");
-      } else {
-        next.add(id);
-        if (typeof window !== "undefined") localStorage.setItem(key, "1");
-      }
-      return next;
-    });
-  };
 
   const toggleTask = (id: string, ti: number, xi: number) => {
     const key = `nis:task:${id}:${ti}:${xi}`;
@@ -194,34 +175,69 @@ function useRoadmapProgress(items: Item[]) {
     });
   };
 
-  // Compute totals
-  const totalStages = items.length;
+  // Totals
   let totalTasks = 0;
-  items.forEach((it) => { it.tracker?.forEach((t) => totalTasks += t.tasks.length); });
-
-  const completedStages = doneStage.size;
+  items.forEach((it) => it.tracker?.forEach((t) => totalTasks += t.tasks.length));
   const completedTasks = doneTasks.size;
+  const pct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const completedTotal = completedStages + completedTasks;
-  const grandTotal = totalStages + totalTasks;
-  const pct = grandTotal > 0 ? Math.round((completedTotal / grandTotal) * 100) : 0;
+  // Per-stage percentages
+  const perStagePct = items.map((it) => {
+    let subtasks = 0, done = 0;
+    it.tracker?.forEach((t, ti) => {
+      subtasks += t.tasks.length;
+      t.tasks.forEach((_, xi) => {
+        if (doneTasks.has(`nis:task:${it.id}:${ti}:${xi}`)) done += 1;
+      });
+    });
+    const p = subtasks > 0 ? Math.round((done / subtasks) * 100) : 0;
+    return p;
+  });
 
-  return {
-    doneStage, doneTasks, toggleStage, toggleTask,
-    completedStages, completedTasks, totalStages, totalTasks, pct
+  // CSV export
+  const exportCSV = () => {
+    const rows = [["Stage", "Section", "Task", "Done"]];
+    items.forEach((it) => {
+      it.tracker?.forEach((t, ti) => {
+        t.tasks.forEach((task, xi) => {
+          const key = `nis:task:${it.id}:${ti}:${xi}`;
+          rows.push([it.year + " — " + it.focus, t.label, task, doneTasks.has(key) ? "1" : "0"]);
+        });
+      });
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dpiii_nis_progress.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+
+  // Reset
+  const resetAll = () => {
+    if (typeof window === "undefined") return;
+    items.forEach((it) => {
+      it.tracker?.forEach((t, ti) => {
+        t.tasks.forEach((_, xi) => {
+          const key = `nis:task:${it.id}:${ti}:${xi}`;
+          localStorage.setItem(key, "0");
+        });
+      });
+    });
+    setDoneTasks(new Set());
+  };
+
+  return { doneTasks, toggleTask, totalTasks, completedTasks, pct, perStagePct, exportCSV, resetAll };
 }
 
 function RoadmapVisual() {
+  const { doneTasks, toggleTask, totalTasks, completedTasks, pct, perStagePct, exportCSV, resetAll } = useRoadmapProgress(ROADMAP);
   const mainRef = useRef<HTMLDivElement | null>(null);
   const [scrollPct, setScrollPct] = useState(0);
 
-  const {
-    doneStage, doneTasks, toggleStage, toggleTask,
-    completedStages, completedTasks, totalStages, totalTasks, pct
-  } = useRoadmapProgress(ROADMAP);
-
-  // Scroll progress relative to main content
+  // Scroll progress for left bar overlay
   useEffect(() => {
     const handler = () => {
       const el = mainRef.current;
@@ -229,7 +245,6 @@ function RoadmapVisual() {
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight || 1;
       const total = rect.height - vh;
-      // amount scrolled within the element (0..1)
       let sc = 0;
       if (rect.top >= 0) sc = 0;
       else if (rect.bottom <= vh) sc = 1;
@@ -248,140 +263,149 @@ function RoadmapVisual() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
       <div className="max-w-5xl mx-auto grid grid-cols-12 gap-6">
-        {/* Left sticky progress bar: shows completion (solid) and scroll (overlay) */}
-        <aside className="hidden md:block col-span-2">
-          <div className="sticky top-6">
-            <div className="text-sm font-medium text-gray-700 mb-2">Progress</div>
+        {/* Left: vertical progress + per-stage list */}
+        <aside className="hidden md:block col-span-3">
+          <div className="sticky top-6 space-y-4">
+            <div>
+              <div className="text-sm font-medium text-gray-700">Overall progress</div>
+              <div className="text-2xl font-bold">{pct}%</div>
+              <div className="text-xs text-gray-600">{completedTasks} of {totalTasks} tasks completed</div>
+              <div className="mt-3 flex gap-2">
+                <button onClick={exportCSV} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-blue-700 bg-blue-50 border-blue-200">
+                  <Download className="h-3.5 w-3.5" /> Export CSV
+                </button>
+                <button onClick={resetAll} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-gray-700 bg-gray-50 border-gray-200">
+                  Reset
+                </button>
+            </div>
+            </div>
+
             <div className="relative h-64 w-3 bg-gray-200 rounded-full overflow-hidden">
               {/* Completion fill (bottom-up) */}
               <div
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-blue-600 to-cyan-500 transition-all duration-300"
                 style={{ height: `${pct}%` }}
               />
-              {/* Scroll indicator overlay (semi-transparent) */}
+              {/* Scroll overlay */}
               <div
                 className="absolute bottom-0 left-0 right-0 bg-black/20 transition-all duration-200 pointer-events-none"
                 style={{ height: `${scrollPct}%` }}
                 aria-hidden
               />
             </div>
-            <div className="mt-2 text-xs text-gray-600">{completedStages + completedTasks}/{totalStages + totalTasks} ({pct}%)</div>
-            <div className="mt-1 text-[11px] text-gray-500">{completedStages}/{totalStages} stages • {completedTasks}/{totalTasks} subtasks</div>
-            <div className="mt-1 text-[11px] text-gray-500">Scroll {scrollPct}%</div>
+
+            {/* Per-stage list */}
+            <ol className="space-y-1 text-sm text-gray-700">
+              {ROADMAP.map((r, i) => (
+                <li key={r.id} className="flex items-center justify-between gap-3">
+                  <a href={`#${r.id}`} className="hover:underline">{i + 1}. {r.year.split(' ')[0]}</a>
+                  <span className="tabular-nums">{perStagePct[i]}%</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </aside>
 
-        {/* Main column (narrow, single column) */}
-        <main ref={mainRef} className="col-span-12 md:col-span-10">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center md:text-left">David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
-          <p className="text-center md:text-left text-gray-600 mb-6">Student‑first sequence: high‑school/early college → CNA exposure → ADN→RN → BSN (preferred) → informatics coursework → ANCC RN‑BC → NI Specialist (MA market).</p>
+        {/* Main column (single, narrow) */}
+        <main ref={mainRef} className="col-span-12 md:col-span-9">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)</h1>
+          <p className="text-gray-600 mb-4">Roadmap emphasizes DPIII’s current student status. CNA exposure → ADN→RN → BSN (preferred) → informatics coursework → ANCC RN‑BC → NI Specialist.</p>
 
-          {/* Top horizontal progress bar for mobile */}
-          <div className="md:hidden mb-6">
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="font-medium text-gray-700">Progress</span>
-              <span className="text-gray-600">{completedStages + completedTasks}/{totalStages + totalTasks} ({pct}%)</span>
+          {/* Top summary bar */}
+          <div className="card mb-6 p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-gray-700">Overall progress</div>
+              <div className="text-sm text-gray-600">{completedTasks} of {totalTasks} tasks completed</div>
             </div>
-            <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="mt-2 h-3 w-full bg-gray-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300" style={{ width: `${pct}%` }} />
             </div>
           </div>
 
-          <div className="max-w-2xl mx-auto space-y-5">
+          <div className="max-w-[760px] mx-auto space-y-5">
             {ROADMAP.map((r) => {
-              const Icon = r.icon || CheckCircle2;
-              const stageDone = doneStage.has(r.id);
+              const Icon = (r.icon || CheckCircle2) as IconType;
               return (
-                <motion.div
-                  key={r.id}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="relative"
-                >
-                  <Card className="overflow-hidden">
-                    <div className={`h-1 w-full bg-gradient-to-r ${r.color}`} />
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 grid place-items-center rounded-xl bg-gray-100 text-gray-800">
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-500">{r.year}</div>
-                            <h3 className="text-base font-semibold text-gray-900">{r.focus}</h3>
-                            {r.context ? <p className="text-sm text-gray-600 mt-0.5">{r.context}</p> : null}
-                            {r.certs?.length ? <p className="text-sm text-gray-600 mt-0.5">{r.certs.join(" • ")}</p> : null}
+                <section id={r.id} key={r.id}>
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="relative"
+                  >
+                    <Card className="overflow-hidden">
+                      <div className={`h-1 w-full bg-gradient-to-r ${r.color}`} />
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 grid place-items-center rounded-xl bg-gray-100 text-gray-800">
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-gray-500">{r.year}</div>
+                              <h3 className="text-base font-semibold text-gray-900">{r.focus}</h3>
+                              {r.context ? <p className="text-sm text-gray-600 mt-0.5">{r.context}</p> : null}
+                              {r.certs?.length ? <p className="text-sm text-gray-600 mt-0.5">{r.certs.join(" • ")}</p> : null}
+                            </div>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleStage(r.id)}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
-                            stageDone
-                              ? "bg-green-100 border-green-300 text-green-700"
-                              : "bg-gray-50 border-gray-200 text-gray-700"
-                          }`}
-                          aria-pressed={stageDone}
-                          title={stageDone ? "Mark as to do" : "Mark as done"}
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" />
-                          {stageDone ? "Done" : "To do"}
-                        </button>
-                      </div>
 
-                      {/* Always-visible details (no toggle) */}
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                        {r.milestone ? <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs text-gray-700 bg-gray-50 border-gray-200">Milestone: {r.milestone}</span> : null}
-                        {r.salaryRange ? <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs text-gray-700 bg-gray-50 border-gray-200">Salary: {r.salaryRange}</span> : null}
-                      </div>
-
-                      {r.tracker?.length ? (
-                        <ul className="mt-4 space-y-2 text-sm text-gray-700">
-                          {r.tracker.map((t, ti) => (
-                            <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                              <div className="font-medium">{t.label} — {t.focus}</div>
-                              <ul className="mt-1 space-y-1">
-                                {t.tasks.map((x, xi) => {
-                                  const taskKey = `nis:task:${r.id}:${ti}:${xi}`;
-                                  const isTaskDone = doneTasks.has(taskKey);
-                                  return (
-                                    <li key={x} className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleTask(r.id, ti, xi)}
-                                        aria-pressed={isTaskDone}
-                                        className={`inline-flex items-center justify-center h-5 w-5 rounded border text-[10px] ${
-                                          isTaskDone ? "bg-green-100 border-green-300 text-green-700" : "bg-white border-gray-300 text-gray-500"
-                                        }`}
-                                        title={isTaskDone ? "Mark as to do" : "Mark as done"}
-                                      >
-                                        ✓
-                                      </button>
-                                      <span>{x}</span>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                              <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-
-                      {(r.links?.length) ? (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {r.links?.map((l) => (
-                            <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-blue-700 bg-blue-50 border-blue-200 hover:underline">
-                              <ExternalLink className="h-3.5 w-3.5" /> {l.label}
-                            </a>
-                          ))}
+                        {/* Always-visible details */}
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                          {r.milestone ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Milestone: {r.milestone}</span> : null}
+                          {r.salaryRange ? <span className="badge text-gray-700 bg-gray-50 border-gray-200">Salary: {r.salaryRange}</span> : null}
                         </div>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                </motion.div>
+
+                        {r.tracker?.length ? (
+                          <ul className="mt-4 space-y-2 text-sm text-gray-700">
+                            {r.tracker.map((t, ti) => (
+                              <li key={t.label} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                <div className="font-medium">{t.label} — {t.focus}</div>
+                                <ul className="mt-2 space-y-1">
+                                  {t.tasks.map((x, xi) => {
+                                    const key = `nis:task:${r.id}:${ti}:${xi}`;
+                                    const isDone = doneTasks.has(key);
+                                    return (
+                                      <li key={x} className="flex items-center justify-between gap-2">
+                                        <span>{x}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleTask(r.id, ti, xi)}
+                                          aria-pressed={isDone}
+                                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs border focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                                            isDone
+                                              ? "bg-green-100 border-green-300 text-green-700"
+                                              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                                          }`}
+                                          title={isDone ? "Mark as to do" : "Mark as done"}
+                                        >
+                                          {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 inline-block">•</span>}
+                                          {isDone ? "Done" : "To do"}
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                                <div className="text-gray-600 mt-2"><span className="font-medium">Outcome:</span> {t.outcome}</div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+
+                        {(r.links?.length) ? (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {r.links?.map((l) => (
+                              <a key={l.href} href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-blue-700 bg-blue-50 border-blue-200 hover:underline">
+                                <ExternalLink className="h-3.5 w-3.5" /> {l.label}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </section>
               );
             })}
           </div>
@@ -389,7 +413,7 @@ function RoadmapVisual() {
       </div>
 
       <footer className="mt-8 text-center text-xs text-gray-500">
-        Built with Next.js + Tailwind + Framer Motion. Completion & scroll progress shown on the left; data stored locally.
+        Built with Next.js + Tailwind + Framer Motion. Progress & CSV export are local to this device.
       </footer>
     </div>
   );

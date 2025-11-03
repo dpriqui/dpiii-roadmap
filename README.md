@@ -1,14 +1,12 @@
-# David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)
+# DPIII NIS Roadmap — Fixes
 
-Enhancements:
-- Left bar now shows **completion** (solid gradient) and **scroll** progress (semi‑transparent overlay).
-- Cards are **always expanded**.
-- Stages emphasize DPIII is **still in school**.
-- Narrow single column (max‑w‑2xl) like your site.
+What I fixed:
+- **“To do” pills**: consistent rounded‑full buttons with text + icon, aligned right of each task.
+- **Scroll listener**: `passive: true` (was `True`) — prevents a TS runtime error.
+- **.card utility**: added to `globals.css` (used by the top summary).
 
-## Quick start
+Quick start:
 ```bash
 npm install
 npm run dev
-# open http://localhost:3000
 ```

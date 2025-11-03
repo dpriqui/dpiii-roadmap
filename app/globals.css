@@ -2,5 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root { color-scheme: light; scroll-behavior: smooth; }
 body { @apply bg-gray-50 text-gray-800; }
+
+.card { @apply rounded-2xl border border-gray-200 bg-white shadow; }
+.badge { @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs; }
