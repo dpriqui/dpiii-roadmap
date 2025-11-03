@@ -7,7 +7,8 @@ const config: Config = {
     'from-sky-500','to-indigo-500',
     'from-indigo-500','to-purple-500',
     'from-purple-500','to-pink-500',
-    'from-rose-500','to-amber-500'
+    'from-rose-500','to-amber-500',
+    'from-blue-600','to-cyan-500'
   ],
   theme: { extend: {} },
   plugins: []

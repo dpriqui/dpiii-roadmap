@@ -1,9 +1,10 @@
 # David E. Perez III — Nursing Informatics Specialist (NIS) Roadmap (2025–2030)
 
-**New:** Progress bar now reflects **stage completion + each subtask** within the trackers.
-- Stage toggle (Done/To do) on every card.
-- Per-subtask check buttons inside Details.
-- All progress persists via `localStorage`.
+Enhancements:
+- Left bar now shows **completion** (solid gradient) and **scroll** progress (semi‑transparent overlay).
+- Cards are **always expanded**.
+- Stages emphasize DPIII is **still in school**.
+- Narrow single column (max‑w‑2xl) like your site.
 
 ## Quick start
 ```bash
